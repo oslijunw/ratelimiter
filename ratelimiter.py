@@ -79,13 +79,13 @@ class RateLimiter:
         job_semaphore = self.semaphore.get(job_type)
         
         if job_semaphore:
-            self.submit_with_sem(task_id, fn, callbacks, job_semaphore, *args, **kwargs)
+            self._submit_with_sem(task_id, fn, callbacks, job_semaphore, *args, **kwargs)
         else:
-            self.submit_direct(task_id, fn, *args, **kwargs)
+            self._submit_direct(task_id, fn, *args, **kwargs)
             
-        self.attach_callback(task_id, job_type, callbacks, with_semaphore=job_semaphore)
+        self._attach_callback(task_id, job_type, callbacks, with_semaphore=job_semaphore)
         
-    def submit_with_sem(
+    def _submit_with_sem(
         self,
         task_id: str,
         fn: Callable,
@@ -97,13 +97,13 @@ class RateLimiter:
         semaphore_acquired = job_semaphore.acquire(blocking=False)
         
         if semaphore_acquired:
-            self.submit_direct(task_id, fn, *args, **kwargs)
+            self._submit_direct(task_id, fn, *args, **kwargs)
         else:
             process_queue = self.process_queue.get(job_type, queue.Queue())
             process_queue.put((task_id, fn, callbacks, args, kwargs))
             self.process_queue[job_type] = process_queue
     
-    def submit_direct(
+    def _submit_direct(
         self,
         task_id: str,
         fn: Callable,
@@ -115,7 +115,7 @@ class RateLimiter:
             {},
         ]
 
-    def fn2worker_callback(self, fn_name: str, future: Future):
+    def _fn2worker_callback(self, fn_name: str, future: Future):
         process_queue = self.process_queue.get(fn_name)
         if not process_queue or process_queue.empty():
             return
@@ -123,7 +123,7 @@ class RateLimiter:
         task_id, fn, callbacks, args, kwargs = process_queue.get()
         self.submit(task_id, fn, callbacks, *args, **kwargs)
             
-    def attach_callback(
+    def _attach_callback(
         self,
         task_id: str,
         job_type: str,
@@ -153,7 +153,7 @@ class RateLimiter:
                 lambda x: self.semaphore[job_type].release()
             )
             future.add_done_callback(
-                functools.partial(self.fn2worker_callback, job_type)
+                functools.partial(self._fn2worker_callback, job_type)
             )
             
         for _callback in callbacks:
