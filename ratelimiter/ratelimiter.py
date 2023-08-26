@@ -11,6 +11,8 @@ import functools
 import queue
 import logging
 logger = logging.getLogger('RateLimiter')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
 
 
 def result_callback(result_data: dict, future: Future):
@@ -99,6 +101,10 @@ class RateLimiter:
         if semaphore_acquired:
             self._submit_direct(task_id, fn, *args, **kwargs)
         else:
+            logger.debug(
+                f'<Task Type: {job_type}> The semaphore cannot be obtained, '
+                f'and the storage cache is waiting for task distribution'
+            )
             process_queue = self.process_queue.get(job_type, queue.Queue())
             process_queue.put((task_id, fn, callbacks, args, kwargs))
             self.process_queue[job_type] = process_queue
@@ -162,5 +168,5 @@ class RateLimiter:
             )
             
 
-rate_limiter = RateLimiter(max_workers=6)
+
 
