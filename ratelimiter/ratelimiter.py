@@ -9,10 +9,11 @@ from threading import Semaphore
 from typing import Dict, List, Callable, Optional, Union
 import functools
 import queue
-import logging
-logger = logging.getLogger('RateLimiter')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+try:
+    from ratelimiter.logging import logger
+except ModuleNotFoundError:
+    import logging
+    logger = logging.getLogger('RateLimiter')
 
 
 def result_callback(result_data: dict, future: Future):
